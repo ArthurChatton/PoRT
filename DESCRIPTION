@@ -1,0 +1,17 @@
+Package: port
+Type: Package
+Title: Positivity Regression Trees Algorithm
+Version: 0.1.0
+Author: Arthur Chatton
+Maintainer: Arthur Chatton <arthur.chatton@umontreal.ca>
+Description: PoRT is an entire framework for checking the causal assumption of posivity.
+    Positivity checking for cross-sectional settings and longitudinal studies are implemented currently.
+    References: Danelian et al. (2023; doi: 10.1515/jci-2022-0032) and Chatton et al. (2024; doi: 10.48550/arXiv.2412.10245).
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
+Imports: 
+    rpart (>= 4.1.19),
+    rpart.plot (>= 3.1.1)
