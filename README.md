@@ -1,6 +1,6 @@
 # PoRT package
 
-/!\ Working version, still under development. Please report any bug at arthur.chatton(at)umontreal.ca
+/!\ Working version, still under development. Please report any bug to arthur.chatton(at)umontreal.ca
 
 R package of the Positivity regression trees algorithm for checking the causal assumption of positivity.
 
