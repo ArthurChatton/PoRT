@@ -6,7 +6,7 @@ R package of the Positivity regression trees algorithm for checking the causal a
 
 See Danelian et al. (2023) for cross-sectional studies and Chatton et al. (2025) for longitudinal studies­.
 
-No example is currently provided in the documentation, but a notebook with simulated data is available at https://github.com/ArthurChatton/sPoRT-notebook.
+No examples are currently provided in the documentation, but a notebook with simulated data is available at https://github.com/ArthurChatton/sPoRT-notebook.
 
 ## References:
 Chatton, A., Schomaker, M., Luque-Fernandez, M.-A., Platt, R. W., & Schnitzer, M. E. (2025). Is Checking for Sequential Positivity Violations Getting You Down? Try sPoRT! Epidemiology, in press. Doi: 10.1097/EDE.0000000000001902
