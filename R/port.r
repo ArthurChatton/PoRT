@@ -616,168 +616,187 @@ sport <- function(A, D.bar, static=TRUE, monotony=FALSE, add.subset=NULL, time=N
 #' @param effect Target estimand for which positivity should be checked ("cde" for controlled direct effect, "ne" for natural effects, or "ie" for interventional effects).
 #' @param type_A Type of the exposure ('b' for binary, 'c' for continuous, or 'n' for nominal).
 #' @param type_M Type of the mediator ('b' for binary, 'c' for continuous, or 'n' for nominal).
-#' @param type_L Type of the post-exposure counfounder ('b' for binary, 'c' for continuous, or 'n' for nominal).
+#' @param type_L Type of the post-exposure confounder ('b' for binary, 'c' for continuous, or 'n' for nominal).
 #' @param cov.quanti Columns' labels of the quantitative variables in the adjustment set.
 #' @param cov.quali Columns' labels of the qualitative variables in the adjustment set.
 #' @param data Dataset, must be a data.frame object.
 #' @param alpha Subgroup minimal size (as a proportion of the whole sample).
 #' @param beta Threshold for non-positivity (i.e., extreme exposure's probability).
 #' @param gamma Maximal number of variables to define a subgroup.
-#' @param minbucket Rpart hyperparameter, minimum number of individual in the leaves.
-#' @param minsplit Rpart hyperparameter, minimum number of individual in a node to be split.
+#' @param minbucket Rpart hyperparameter, minimum number of individuals in the leaves.
+#' @param minsplit Rpart hyperparameter, minimum number of individuals in a node to be split.
 #' @param maxdepth Rpart hyperparameter, maximum number of successive nodes.
 #' @param pruning Boolean, should we keep the 'internal' violation (e.g., 20<cov<30).
 #'
-#' @return Return two lists. The first is related to the exposure positivity and the second is related to the mediator positivity. If effect != "cde", the mediator positivity violations are presented for each counterfactual outcome.
+#' @return Return two lists. The first is related to exposure positivity, and the second to mediator positivity. If effect != "cde", the mediator positivity violations are presented for each counterfactual outcome.
 #' @export
 deport <- function(A, M, L=NULL, effect = "ne", type_A = "b", type_M = "b", type_L=NULL, cov.quanti, cov.quali, data, alpha = 0.05, beta = "gruber", gamma = 2, minbucket = 6, minsplit = 20, maxdepth = 30, pruning = FALSE){
-
+  
   ####
   # Add controls
   ####
-
-
-
+  
+  
+  
   ####
-  #
+  #  
   ####
-
-
+  
+  
   # exposure positivity
-  exposure <- port(A, type_A = type_A,
-                   cov.quanti = cov.quanti, cov.quali = cov.quali, data = data,
-                   alpha = alpha, beta = beta, gamma = gamma, check.side = "both",
-                   mediation = FALSE, pruning = pruning, minbucket = minbucket,
+  exposure <- port(A, type_A = type_A, 
+                   cov.quanti = cov.quanti, cov.quali = cov.quali, data = data, 
+                   alpha = alpha, beta = beta, gamma = gamma, check.side = "both", 
+                   mediation = FALSE, pruning = pruning, minbucket = minbucket, 
                    minsplit = minsplit, maxdepth = maxdepth)
-
+  
   # mediator positivity
   if(effect == "cde"){
-    mediator <- port(M, type_A = "b",
-                     cov.quanti = cov.quanti, cov.quali = cov.quali, data = data,
-                     alpha = alpha, beta = beta, gamma = gamma, check.side = "both",
-                     mediation = TRUE, pruning = pruning, minbucket = minbucket,
+    mediator <- port(M, type_A = "b", 
+                     cov.quanti = cov.quanti, cov.quali = cov.quali, data = data, 
+                     alpha = alpha, beta = beta, gamma = gamma, check.side = "both", 
+                     mediation = TRUE, pruning = pruning, minbucket = minbucket, 
                      minsplit = minsplit, maxdepth = maxdepth)
   }
-
+  
   if(effect == "ne"){
-
+    
     #dataset splitting according to exposure
     db1 <- subset(data, get(A)==1)
     db0 <- subset(data, get(A)==0)
-
+    
     #check mediator positivity for Y^{1,M0}
-    y10 <- port(M, type_A = type_M,
-                cov.quanti = cov.quanti, cov.quali = cov.quali, data = db1,
-                alpha = alpha, beta = beta, gamma = gamma, check.side = "zero",
-                mediation = TRUE, pruning = pruning, minbucket = minbucket,
+    y10 <- port(M, type_A = type_M, 
+                cov.quanti = cov.quanti, cov.quali = cov.quali, data = db1, 
+                alpha = alpha, beta = beta, gamma = gamma, check.side = "zero", 
+                mediation = TRUE, pruning = pruning, minbucket = minbucket, 
                 minsplit = minsplit, maxdepth = maxdepth)
-
-    ## remove unobserved subgroup in the other exposure group
-    rm_sub <- c()
-    for(i in 1:nrow(y10)){
-      prev <- extract_prevalence_subgrp(y10$subgroup[i], db0, M, L)
-      if(is.na(prev[y10$mediator[i]]) || prev[y10$mediator[i]]<gruber(db0)) rm_sub <- c(rm_sub, i)
+    
+    if(length(y10)!=1){
+    
+      ## remove unobserved subgroup in the other exposure group 
+      rm_sub <- c()
+      for(i in 1:nrow(y10)){ 
+        prev <- extract_prevalence_subgrp(y10$subgroup[i], db0, M, L) 
+        if(is.na(prev[y10$mediator[i]]) || prev[y10$mediator[i]]<gruber(db0)) rm_sub <- c(rm_sub, i) 
+      }  
+      
+      if(!is.null(rm_sub)) y10 <- y10[-rm_sub,] 
+      if(nrow(y10)==0) y10 <- "No problematic subgroup was identified." 
+      
     }
-
-    if(!is.null(rm_sub)) y10 <- y10[-rm_sub,]
-    if(nrow(y10)==0) y10 <- "No problematic subgroup was identified."
-
+    
     #check mediator positivity for Y^{0,M1}
-    y01 <- port(M, type_A = type_M,
-                cov.quanti = cov.quanti, cov.quali = cov.quali, data = db0,
-                alpha = alpha, beta = beta, gamma = gamma, check.side = "zero",
-                mediation = TRUE, pruning = pruning, minbucket = minbucket,
+    y01 <- port(M, type_A = type_M, 
+                cov.quanti = cov.quanti, cov.quali = cov.quali, data = db0, 
+                alpha = alpha, beta = beta, gamma = gamma, check.side = "zero", 
+                mediation = TRUE, pruning = pruning, minbucket = minbucket, 
                 minsplit = minsplit, maxdepth = maxdepth)
-
-    ## remove unobserved subgroup in the other exposure group
-    rm_sub <- c()
-    for(i in 1:nrow(y01)){
-      prev <- extract_prevalence_subgrp(y01$subgroup[i], db1, M, L)
-      if(is.na(prev[y01$mediator[i]]) || prev[y01$mediator[i]]<gruber(db1)) rm_sub <- c(rm_sub, i)
+    
+    if(length(y01)!=1){
+    
+      ## remove unobserved subgroup in the other exposure group 
+      rm_sub <- c()
+      for(i in 1:nrow(y01)){ 
+        prev <- extract_prevalence_subgrp(y01$subgroup[i], db1, M, L) 
+        if(is.na(prev[y01$mediator[i]]) || prev[y01$mediator[i]]<port:::gruber(db1)) rm_sub <- c(rm_sub, i) 
+      }  
+      
+      if(!is.null(rm_sub)) y01 <- y01[-rm_sub,]
+      if(nrow(y01)==0) y01 <- "No problematic subgroup was identified." 
+    
     }
-
-    if(!is.null(rm_sub)) y01 <- y01[-rm_sub,]
-    if(nrow(y01)==0) y01 <- "No problematic subgroup was identified."
-
+    
     mediator <- list(Y0M1=y01, Y1M0=y10)
-
+    
   }
-
+  
   if(effect == "ie"){
-
+    
     #dataset splitting according to exposure
     db1 <- subset(data, get(A)==1)
     db0 <- subset(data, get(A)==0)
-
+    
     #add L to cov.quali or quanti
     if(type_L == "c") cov.quanti <- c(cov.quanti, L) else cov.quali <- c(cov.quali, L)
-
+    
     #check mediator positivity for Y^{1,M0} and Y^{1,M1}
-    y1 <- port(M, type_A = type_M,
-               cov.quanti = cov.quanti, cov.quali = cov.quali, data = db1,
-               alpha = alpha, beta = beta, gamma = gamma, check.side = "zero",
-               mediation = TRUE, pruning = pruning, minbucket = minbucket,
-               minsplit = minsplit, maxdepth = maxdepth)
-
-    ## Y^{1,M1} remove only L here, keep same db
-    rm_sub <- c()
-    for(i in 1:nrow(y1)){
-      prev <- extract_prevalence_subgrp(y1$subgroup[i], db1, M, L)
-      if(is.na(prev[y1$mediator[i]]) || prev[y1$mediator[i]]<gruber(db1)) rm_sub <- c(rm_sub, i)
+    y1 <- port(M, type_A = type_M, 
+                cov.quanti = cov.quanti, cov.quali = cov.quali, data = db1, 
+                alpha = alpha, beta = beta, gamma = gamma, check.side = "zero", 
+                mediation = TRUE, pruning = pruning, minbucket = minbucket, 
+                minsplit = minsplit, maxdepth = maxdepth)
+    
+    if(length(y1)!=1){
+    
+      ## Y^{1,M1} remove only L here, keep same db
+      rm_sub <- c()
+      for(i in 1:nrow(y1)){ 
+        prev <- extract_prevalence_subgrp(y1$subgroup[i], db1, M, L) 
+        if(is.na(prev[y1$mediator[i]]) || prev[y1$mediator[i]]<gruber(db1)) rm_sub <- c(rm_sub, i) 
+      }  
+      
+      if(!is.null(rm_sub)) y11 <- y1[-rm_sub,] else y11 <- y1
+      if(nrow(y11)==0) y11 <- "No problematic subgroup was identified." 
+      
+      
+      ## Y^{1,M0} remove L and change db
+      rm_sub <- c()
+      for(i in 1:nrow(y1)){ 
+        prev <- extract_prevalence_subgrp(y1$subgroup[i], db0, M, L) 
+        if(is.na(prev[y1$mediator[i]]) || prev[y1$mediator[i]]<gruber(db0)) rm_sub <- c(rm_sub, i) 
+      }  
+      
+      if(!is.null(rm_sub)) y10 <- y1[-rm_sub,] else y10 <- y1
+      if(nrow(y10)==0) y10 <- "No problematic subgroup was identified." 
+    
+    }else{
+      y11 <- y10 <- "No problematic subgroup was identified."
     }
-
-    if(!is.null(rm_sub)) y11 <- y1[-rm_sub,] else y11 <- y1
-    if(nrow(y11)==0) y11 <- "No problematic subgroup was identified."
-
-
-    ## Y^{1,M0} remove L and change db
-    rm_sub <- c()
-    for(i in 1:nrow(y1)){
-      prev <- extract_prevalence_subgrp(y1$subgroup[i], db0, M, L)
-      if(is.na(prev[y1$mediator[i]]) || prev[y1$mediator[i]]<gruber(db0)) rm_sub <- c(rm_sub, i)
-    }
-
-    if(!is.null(rm_sub)) y10 <- y1[-rm_sub,] else y10 <- y1
-    if(nrow(y10)==0) y10 <- "No problematic subgroup was identified."
-
-
+    
     #check mediator positivity for Y^{0,M1} and Y^{0,M0}
-    y0 <- port(M, type_A = type_M,
-               cov.quanti = cov.quanti, cov.quali = cov.quali, data = db0,
-               alpha = alpha, beta = beta, gamma = gamma, check.side = "zero",
-               mediation = TRUE, pruning = pruning, minbucket = minbucket,
-               minsplit = minsplit, maxdepth = maxdepth)
+    y0 <- port(M, type_A = type_M, 
+                cov.quanti = cov.quanti, cov.quali = cov.quali, data = db0, 
+                alpha = alpha, beta = beta, gamma = gamma, check.side = "zero", 
+                mediation = TRUE, pruning = pruning, minbucket = minbucket, 
+                minsplit = minsplit, maxdepth = maxdepth)
+    
+    if(length(y0)!=1){
 
-    ## Y^{0,M0} remove only L here, keep same db
-    rm_sub <- c()
-    for(i in 1:nrow(y0)){
-      prev <- extract_prevalence_subgrp(y0$subgroup[i], db0, M, L)
-      if(is.na(prev[y0$mediator[i]]) || prev[y0$mediator[i]]<gruber(db0)) rm_sub <- c(rm_sub, i)
+      ## Y^{0,M0} remove only L here, keep same db
+      rm_sub <- c()
+      for(i in 1:nrow(y0)){ 
+        prev <- extract_prevalence_subgrp(y0$subgroup[i], db0, M, L) 
+        if(is.na(prev[y0$mediator[i]]) || prev[y0$mediator[i]]<gruber(db0)) rm_sub <- c(rm_sub, i) 
+      }  
+      
+      if(!is.null(rm_sub)) y00 <- y0[-rm_sub,] else y00 <- y0
+      if(nrow(y00)==0) y00 <- "No problematic subgroup was identified." 
+      
+      
+      ## Y^{0,M1} remove L and change db
+      rm_sub <- c()
+      for(i in 1:nrow(y0)){ 
+        prev <- extract_prevalence_subgrp(y0$subgroup[i], db1, M, L) 
+        if(is.na(prev[y0$mediator[i]]) || prev[y0$mediator[i]]<gruber(db1)) rm_sub <- c(rm_sub, i) 
+      }
+      
+      if(!is.null(rm_sub)) y01 <- y0[-rm_sub,] else y01 <- y0 
+      if(nrow(y01)==0) y01 <- "No problematic subgroup was identified." 
+      
+    }else{
+      y01 <- y00 <- "No problematic subgroup was identified."
     }
-
-    if(!is.null(rm_sub)) y00 <- y0[-rm_sub,] else y00 <- y0
-    if(nrow(y00)==0) y00 <- "No problematic subgroup was identified."
-
-
-    ## Y^{0,M1} remove L and change db
-    rm_sub <- c()
-    for(i in 1:nrow(y0)){
-      prev <- extract_prevalence_subgrp(y0$subgroup[i], db1, M, L)
-      if(is.na(prev[y0$mediator[i]]) || prev[y0$mediator[i]]<gruber(db1)) rm_sub <- c(rm_sub, i)
-    }
-
-    if(!is.null(rm_sub)) y01 <- y0[-rm_sub,] else y01 <- y0
-    if(nrow(y01)==0) y01 <- "No problematic subgroup was identified."
-
+    
     mediator <- list(Y0M0 = y00, Y1M1=y11, Y0M1=y01, Y1M0=y10)
-
+    
   }
-
+  
   output <- list(A_positivity = exposure,
                  M_positivity = mediator)
-
+  
   return(output)
-
+  
 }
 
 
